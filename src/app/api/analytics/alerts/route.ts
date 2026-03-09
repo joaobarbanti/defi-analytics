@@ -5,7 +5,7 @@ import { fetchStablecoins } from '@/lib/api/stablecoins'
 import { computeGrowthMetrics } from '@/lib/analytics/growthMetrics'
 import { generateAlerts } from '@/lib/analytics/alertEngine'
 
-export const revalidate = 120
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {

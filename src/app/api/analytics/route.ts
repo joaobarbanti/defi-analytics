@@ -10,13 +10,10 @@ import { generateInsights } from '@/lib/analytics/insightGenerator'
 import { computeSentiment } from '@/lib/analytics/sentimentCalc'
 import type { AnalyticsPayload } from '@/types/analytics'
 
-// Cache for 2 minutes — revalidate on the server
-export const revalidate = 120
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   // Fetch each source independently — a single failed source should NOT kill the route.
-  // Each fetch falls back to an empty array so downstream compute functions always
-  // receive a valid (if partial) dataset and the route returns 200 with what it has.
   const protocols = await fetchProtocols().catch((e) => {
     console.warn('[analytics] protocols fetch failed — continuing with empty dataset', e)
     return []
@@ -30,8 +27,6 @@ export async function GET() {
     return []
   })
 
-  // Compute each analytics layer independently — failures return safe fallbacks
-  // so the rest of the payload can still be served.
   const growthMetrics = await Promise.resolve().then(() => computeGrowthMetrics(protocols)).catch((e) => {
     console.warn('[analytics] computeGrowthMetrics failed', e)
     return {}

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { fetchYields } from '@/lib/api/yields'
 
-export const revalidate = 120
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {

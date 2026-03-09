@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { fetchChains } from '@/lib/api/chains'
 
-export const revalidate = 120
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {

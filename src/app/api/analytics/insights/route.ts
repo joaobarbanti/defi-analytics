@@ -7,7 +7,7 @@ import { computeChainFlows } from '@/lib/analytics/liquidityFlow'
 import { computeStablecoinMetrics } from '@/lib/analytics/stablecoinAnalytics'
 import { generateInsights } from '@/lib/analytics/insightGenerator'
 
-export const revalidate = 120
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {

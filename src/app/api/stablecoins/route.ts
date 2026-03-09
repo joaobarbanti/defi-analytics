@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { fetchStablecoins } from '@/lib/api/stablecoins'
 
-export const revalidate = 120
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
