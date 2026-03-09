@@ -11,12 +11,15 @@ import {
   BarChart,
   Bar,
   Cell,
+  PieChart,
+  Pie,
 } from 'recharts'
 import { useDefiStore } from '@/store/defi'
 import { useProtocolDetail } from '@/hooks/useProtocolDetail'
 import { useYields } from '@/hooks/useYields'
 import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { TrendLabelBadge } from '@/components/ui/TrendLabelBadge'
 import { assignNodeColor } from '@/lib/transforms/normalizeProtocol'
 import { formatTVL, formatAPY, formatChange } from '@/lib/transforms/format'
 import InvestLink from '@/components/ui/InvestLink'
@@ -34,6 +37,229 @@ function toNum(v: unknown): number {
   if (typeof v === 'number') return v
   if (typeof v === 'string') return parseFloat(v) || 0
   return 0
+}
+
+// Palette for chain donut slices
+const CHAIN_COLORS = [
+  '#6366f1', '#22d3ee', '#a78bfa', '#34d399', '#f59e0b',
+  '#f43f5e', '#60a5fa', '#fb923c', '#4ade80', '#e879f9',
+]
+
+// ── Growth Intelligence Section ──────────────────────────────────────────────
+
+interface GrowthIntelProps {
+  slug: string
+  color: string
+}
+
+function GrowthIntelSection({ slug, color }: GrowthIntelProps) {
+  const analytics = useDefiStore((s) => s.analytics)
+  const growthMetrics = analytics?.growthMetrics ?? {}
+  const metrics = growthMetrics[slug]
+
+  if (!metrics) return null
+
+  const est30d = metrics.tvl30dChange
+  const est30dFmt = est30d != null
+    ? `${est30d >= 0 ? '+' : ''}${est30d.toFixed(1)}%`
+    : null
+
+  const rankChip = metrics.rankChange !== 0 && (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-semibold ${
+        metrics.rankChange > 0
+          ? 'bg-emerald-500/15 text-emerald-300'
+          : 'bg-red-500/15 text-red-400'
+      }`}
+    >
+      {metrics.rankChange > 0 ? '▲' : '▼'}&nbsp;
+      {Math.abs(metrics.rankChange)}
+    </span>
+  )
+
+  return (
+    <div
+      className="rounded-lg border p-4 space-y-3"
+      style={{ borderColor: `${color}33`, background: `${color}08` }}
+    >
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50">
+        Growth Intelligence
+      </h3>
+
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-white/60">Trend</span>
+        <TrendLabelBadge label={metrics.trendLabel} />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-white/60">Momentum Score</span>
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-24 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, Math.max(0, (metrics.momentumScore + 100) / 3))}%`,
+                background: metrics.momentumScore >= 0 ? color : '#ef4444',
+              }}
+            />
+          </div>
+          <span
+            className="text-sm font-bold"
+            style={{ color: metrics.momentumScore >= 0 ? color : '#ef4444' }}
+          >
+            {metrics.momentumScore > 0 ? '+' : ''}
+            {metrics.momentumScore.toFixed(0)}
+          </span>
+        </div>
+      </div>
+
+      {est30dFmt && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-white/60">Est. 30d TVL Change</span>
+          <span
+            className={`text-sm font-semibold ${
+              (est30d ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
+            }`}
+          >
+            {est30dFmt}
+            <span className="ml-1 text-xs text-white/30">(est.)</span>
+          </span>
+        </div>
+      )}
+
+      {metrics.rankChange !== 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-white/60">Rank Change</span>
+          {rankChip}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Liquidity Signal Section ──────────────────────────────────────────────────
+
+interface LiquiditySignalProps {
+  slug: string
+}
+
+function LiquiditySignalSection({ slug }: LiquiditySignalProps) {
+  const analytics = useDefiStore((s) => s.analytics)
+  const flows = analytics?.flows ?? []
+
+  // Find flows that mention this protocol's chains (rough signal)
+  // We'll use the chainTvls from the selected protocol instead
+  const protocolFlows = flows.filter(
+    (f) => f.id.startsWith(slug) || f.id.endsWith(slug)
+  )
+
+  if (protocolFlows.length === 0) return null
+
+  return (
+    <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-4 space-y-2">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50">
+        Liquidity Signals
+      </h3>
+      {protocolFlows.slice(0, 3).map((flow) => (
+        <div
+          key={flow.id}
+          className="flex items-center justify-between text-sm"
+        >
+          <span className="text-white/60">
+            {flow.sourceChain} → {flow.destChain}
+          </span>
+          <span
+            className={`font-semibold ${flow.netFlow >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+          >
+            {flow.netFlow >= 0 ? '+' : ''}{formatTVL(flow.netFlow)}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Chain Dominance Donut ─────────────────────────────────────────────────────
+
+interface ChainDonutProps {
+  chainTvls: Record<string, number>
+}
+
+function ChainDonutChart({ chainTvls }: ChainDonutProps) {
+  const entries = Object.entries(chainTvls)
+    .filter(([, v]) => v > 0)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8)
+
+  if (entries.length < 2) return null
+
+  const total = entries.reduce((s, [, v]) => s + v, 0)
+  const pieData = entries.map(([name, value]) => ({
+    name,
+    value,
+    share: ((value / total) * 100).toFixed(1),
+  }))
+
+  return (
+    <div>
+      <h3 className="mb-3 text-sm font-semibold text-white/70">
+        Chain Distribution
+      </h3>
+      <div className="flex items-center gap-4">
+        {/* Donut */}
+        <div className="flex-shrink-0">
+          <ResponsiveContainer width={100} height={100}>
+            <PieChart>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                innerRadius={28}
+                outerRadius={46}
+                dataKey="value"
+                strokeWidth={0}
+              >
+                {pieData.map((_, i) => (
+                  <Cell
+                    key={i}
+                    fill={CHAIN_COLORS[i % CHAIN_COLORS.length]}
+                    opacity={0.85}
+                  />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Legend */}
+        <div className="flex-1 space-y-1">
+          {pieData.slice(0, 5).map((d, i) => (
+            <div key={d.name} className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-full flex-shrink-0"
+                  style={{
+                    background: CHAIN_COLORS[i % CHAIN_COLORS.length],
+                    opacity: 0.9,
+                  }}
+                />
+                <span className="text-xs text-white/60 truncate max-w-[70px]">
+                  {d.name}
+                </span>
+              </div>
+              <span className="text-xs font-medium text-white/80">
+                {d.share}%
+              </span>
+            </div>
+          ))}
+          {pieData.length > 5 && (
+            <p className="text-xs text-white/30 pl-3.5">
+              +{pieData.length - 5} more chains
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
@@ -91,6 +317,11 @@ export function ProtocolPanel() {
       ? protocolPools.reduce((sum, p) => sum + (p.apy ?? 0), 0) /
         protocolPools.length
       : null
+
+  // Chain TVLs for donut chart
+  const chainTvls: Record<string, number> =
+    (selectedProtocol as unknown as { chainTvls?: Record<string, number> })
+      .chainTvls ?? {}
 
   return (
     <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-white/10 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
@@ -172,6 +403,9 @@ export function ProtocolPanel() {
           </div>
         </div>
 
+        {/* ── Growth Intelligence ── */}
+        <GrowthIntelSection slug={selectedProtocol.slug} color={color} />
+
         {/* TVL History Chart */}
         <div>
           <h3 className="mb-3 text-sm font-semibold text-white/70">
@@ -225,6 +459,14 @@ export function ProtocolPanel() {
             <p className="text-sm text-white/30">No TVL history available</p>
           )}
         </div>
+
+        {/* ── Chain Distribution Donut ── */}
+        {Object.keys(chainTvls).length >= 2 && (
+          <ChainDonutChart chainTvls={chainTvls} />
+        )}
+
+        {/* ── Liquidity Signal ── */}
+        <LiquiditySignalSection slug={selectedProtocol.slug} />
 
         {/* APY Section */}
         {avgAPY != null && (

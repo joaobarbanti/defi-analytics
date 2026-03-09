@@ -71,6 +71,8 @@ export interface Stablecoin {
   pegMechanism: string
   circulating: { peggedUSD: number }
   price: number | null
+  /** Per-chain circulating supply map — present in DeFiLlama /stablecoins response */
+  chainCirculating?: Record<string, { current: { peggedUSD: number } }>
 }
 
 // ─────────────────────────────────────────────

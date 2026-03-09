@@ -4,6 +4,77 @@
 
 import type { YieldPool } from './defillama'
 
+// ── Pool Intelligence Types ───────────────────────────────────────────────────
+
+/** Signals that can be raised on an individual pool */
+export type PoolFlag =
+  | 'reward_driven'    // >80% of APY is reward tokens
+  | 'low_tvl'          // TVL < $500k
+  | 'extreme_apy'      // APY > 200%
+  | 'apy_crash'        // 7d APY drop > 50%
+  | 'stable_safe'      // stablecoin, low-risk, TVL≥5M, APY 2–25%
+  | 'transient'        // reward APY > 5%, TVL≥2M, not high-risk
+  | 'lst'              // liquid staking token pool
+
+/** Per-pool signal result */
+export interface PoolIndicator {
+  poolId: string
+  symbol: string
+  project: string
+  /** Optional display name for the protocol (may differ from project slug) */
+  protocolName?: string
+  chain: string
+  flags: PoolFlag[]
+  apy: number
+  tvlUsd: number
+}
+
+/**
+ * The three investor profiles we surface on PoolIntelligenceOverview.
+ * Each profile contains a recommended pool count, a calculated reason list,
+ * and top matching pools.
+ */
+export type InvestorProfileType = 'conservative' | 'moderate' | 'aggressive'
+
+export interface InvestorProfile {
+  type: InvestorProfileType
+  label: string
+  poolCount: number
+  avgApy: number
+  totalTvl: number
+  /** 2–4 data-driven bullets explaining why this profile's pools were selected */
+  reasons: string[]
+  topPools: PoolIndicator[]
+  /**
+   * Confidence score 0–100: how strongly the data supports this profile.
+   * Higher = more qualifying pools, higher TVL, more stable composition.
+   */
+  confidenceScore: number
+  /**
+   * Risk warnings specific to this profile's current pool composition.
+   * Shown in amber/red below the reasons list.
+   */
+  riskWarnings: string[]
+}
+
+export interface PoolIntelligenceReport {
+  totalAnalyzed: number
+  stableSafeCount: number
+  suspiciousCount: number
+  transientCount: number
+  lstCount: number
+  /** Ratios for sentiment driver wiring (Phase 3) */
+  pctSafe: number         // 0..1
+  pctSuspicious: number   // 0..1
+  pctRewardOnly: number   // 0..1  (>80% reward-driven)
+  pctTransient: number    // 0..1
+  pctLst: number          // 0..1
+  profiles: Record<InvestorProfileType, InvestorProfile>
+  generatedAt: number
+}
+
+// ── Core Classification Types ─────────────────────────────────────────────────
+
 /** Three-tier risk ladder for yield pools */
 export type RiskLevel = 'low' | 'medium' | 'high'
 
@@ -31,6 +102,28 @@ export type PoolCategory =
 export interface ClassifiedPool extends YieldPool {
   riskLevel: RiskLevel
   category: PoolCategory
+}
+
+// ── Protocol Recommendation Types ─────────────────────────────────────────────
+
+/**
+ * A protocol-level recommendation derived from aggregating ClassifiedPool data.
+ * Surfaced by the SignalDriversPanel in a 3-column analyst layout.
+ */
+export interface ProtocolRecommendation {
+  protocolSlug: string
+  protocolName: string
+  chain: string
+  logo: string | null
+  category: PoolCategory
+  avgApy: number
+  totalTvl: number
+  /** 0–100: higher = more data, higher TVL, cleaner flag composition */
+  confidenceScore: number
+  primaryReason: string
+  supportingFactors: string[]
+  riskWarnings: string[]
+  profileType: InvestorProfileType
 }
 
 // ── Display helpers ───────────────────────────────────────────────────────────

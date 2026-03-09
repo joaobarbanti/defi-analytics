@@ -4,10 +4,12 @@ import { useState, useMemo } from 'react'
 import { useProtocols } from '@/hooks/useProtocols'
 import { useDefiStore } from '@/store/defi'
 import { assignNodeColor, normalizeProtocol } from '@/lib/transforms/normalizeProtocol'
-import { formatTVL, formatAPY, formatChange } from '@/lib/transforms/format'
+import { formatTVL, formatChange } from '@/lib/transforms/format'
 import { Badge } from '@/components/ui/Badge'
 import { RiskBadge } from '@/components/ui/RiskBadge'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { TrendLabelBadge } from '@/components/ui/TrendLabelBadge'
+import { MomentumArrow } from '@/components/ui/MomentumArrow'
 import { RISK_COLOR } from '@/types/risk'
 import type { RiskLevel } from '@/types/risk'
 import type { Protocol } from '@/types/defillama'
@@ -53,7 +55,7 @@ function getProtocolRisk(category: string): RiskLevel {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-type SortKey = 'tvl' | 'change_1d' | 'change_7d' | 'name'
+type SortKey = 'tvl' | 'change_1d' | 'change_7d' | 'name' | 'momentum'
 type SortDir = 'asc' | 'desc'
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -72,7 +74,10 @@ const RISK_TABS: { value: RiskLevel | 'all'; label: string }[] = [
 
 export function ProtocolRanking() {
   const { protocols, isLoading } = useProtocols()
-  const { setSelectedProtocol, filters, setFilter, resetFilters } = useDefiStore()
+  const { setSelectedProtocol, filters, setFilter, resetFilters, growthMetrics } =
+    useDefiStore()
+
+  const metrics = growthMetrics()
 
   const [sortKey, setSortKey] = useState<SortKey>('tvl')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -142,6 +147,9 @@ export function ProtocolRanking() {
       } else if (sortKey === 'name') {
         valA = a.name ?? ''
         valB = b.name ?? ''
+      } else if (sortKey === 'momentum') {
+        valA = metrics[a.slug]?.momentumScore ?? 0
+        valB = metrics[b.slug]?.momentumScore ?? 0
       }
 
       if (typeof valA === 'string') {
@@ -155,7 +163,7 @@ export function ProtocolRanking() {
     })
 
     return list.slice(0, 200)
-  }, [protocols, filters, sortKey, sortDir, riskFilter])
+  }, [protocols, filters, sortKey, sortDir, riskFilter, metrics])
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -171,6 +179,8 @@ export function ProtocolRanking() {
     setSelectedProtocol(node)
   }
 
+  const hasAnalytics = Object.keys(metrics).length > 0
+
   return (
     <section className="px-4 sm:px-8">
       <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -178,6 +188,9 @@ export function ProtocolRanking() {
           <h2 className="text-xl font-bold text-white">Protocol Rankings</h2>
           <p className="text-sm text-white/40">
             {sorted.length.toLocaleString()} protocols shown
+            {hasAnalytics && (
+              <span className="ml-2 text-blue-400/70">· with market intelligence</span>
+            )}
           </p>
         </div>
         <button
@@ -277,7 +290,7 @@ export function ProtocolRanking() {
       ) : (
         <div className="overflow-hidden rounded-xl border border-white/10">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px]">
+            <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5">
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/40 w-10">
@@ -299,6 +312,20 @@ export function ProtocolRanking() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/40">
                     Risk
                   </th>
+                  {hasAnalytics && (
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/40">
+                      Trend
+                    </th>
+                  )}
+                  {hasAnalytics && (
+                    <th
+                      className="cursor-pointer px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-white/40 hover:text-white/70 select-none"
+                      onClick={() => handleSort('momentum')}
+                    >
+                      Momentum
+                      <SortIcon active={sortKey === 'momentum'} dir={sortDir} />
+                    </th>
+                  )}
                   <th
                     className="cursor-pointer px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-white/40 hover:text-white/70 select-none"
                     onClick={() => handleSort('tvl')}
@@ -328,6 +355,7 @@ export function ProtocolRanking() {
                   const c1d = formatChange(p.change_1d)
                   const c7d = formatChange(p.change_7d)
                   const risk = getProtocolRisk(p.category)
+                  const pMetrics = metrics[p.slug]
 
                   return (
                     <tr
@@ -375,6 +403,27 @@ export function ProtocolRanking() {
                       <td className="px-4 py-3">
                         <RiskBadge risk={risk} compact />
                       </td>
+                      {hasAnalytics && (
+                        <td className="px-4 py-3">
+                          {pMetrics ? (
+                            <TrendLabelBadge label={pMetrics.trendLabel} compact />
+                          ) : (
+                            <span className="text-xs text-white/20">—</span>
+                          )}
+                        </td>
+                      )}
+                      {hasAnalytics && (
+                        <td className="px-4 py-3 text-right">
+                          {pMetrics ? (
+                            <MomentumArrow
+                              score={pMetrics.momentumScore}
+                              rankChange={pMetrics.rankChange}
+                            />
+                          ) : (
+                            <span className="text-xs text-white/20">—</span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right text-sm font-medium text-white">
                         {formatTVL(p.tvl)}
                       </td>

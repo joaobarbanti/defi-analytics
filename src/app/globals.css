@@ -31,3 +31,87 @@ body {
 canvas {
   outline: none;
 }
+
+/* ── Analytics animations ────────────────────────────────────────────────── */
+
+/* Fade-up entrance for insight cards and alert rows */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide-in from right for the protocol panel */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Bar fill animation (used for sentiment drivers + momentum bar) */
+@keyframes bar-grow {
+  from { width: 0; }
+}
+
+/* Gauge arc draw (opacity pulse on load) */
+@keyframes gauge-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Utility classes */
+.animate-fade-up {
+  animation: fade-up 0.35s ease both;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease both;
+}
+
+.animate-bar-grow {
+  animation: bar-grow 0.6s ease both;
+}
+
+.animate-gauge-appear {
+  animation: gauge-appear 0.5s ease both;
+}
+
+/* Staggered children — apply to parent, children get delay via nth-child */
+.stagger-children > *:nth-child(1)  { animation-delay: 0ms;   }
+.stagger-children > *:nth-child(2)  { animation-delay: 50ms;  }
+.stagger-children > *:nth-child(3)  { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4)  { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5)  { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6)  { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7)  { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8)  { animation-delay: 350ms; }
+.stagger-children > *:nth-child(9)  { animation-delay: 400ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 450ms; }
+
+/* Glassmorphism card hover lift */
+.glass-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.4);
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

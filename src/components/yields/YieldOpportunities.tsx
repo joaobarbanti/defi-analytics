@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useYields } from '@/hooks/useYields'
 import { classifyPool } from '@/lib/risk/classifyPool'
 import { formatTVL, formatAPY } from '@/lib/transforms/format'
@@ -8,7 +8,8 @@ import { RiskBadge } from '@/components/ui/RiskBadge'
 import { PoolCategoryBadge } from '@/components/ui/PoolCategoryBadge'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { RISK_COLOR, CATEGORY_LABEL } from '@/types/risk'
-import type { RiskLevel, PoolCategory, ClassifiedPool } from '@/types/risk'
+import type { RiskLevel, PoolCategory, ClassifiedPool, InvestorProfileType } from '@/types/risk'
+import { useDefiStore } from '@/store/defi'
 
 // ── Risk tab definitions ──────────────────────────────────────────────────────
 
@@ -29,6 +30,19 @@ const CATEGORIES: { value: PoolCategory | 'all'; label: string }[] = [
   { value: 'volatile-lp',     label: CATEGORY_LABEL['volatile-lp'] },
   { value: 'leveraged',       label: CATEGORY_LABEL['leveraged'] },
 ]
+
+// Mapping from investor profile to risk tab
+const PROFILE_TO_RISK: Record<InvestorProfileType, RiskLevel> = {
+  conservative: 'low',
+  moderate:     'medium',
+  aggressive:   'high',
+}
+
+const PROFILE_LABEL: Record<InvestorProfileType, string> = {
+  conservative: 'Conservative',
+  moderate:     'Moderate',
+  aggressive:   'Aggressive',
+}
 
 // ── Protocol accordion row ────────────────────────────────────────────────────
 
@@ -205,6 +219,21 @@ export function YieldOpportunities() {
   const [categoryFilter, setCategoryFilter] = useState<PoolCategory | 'all'>('all')
   const [showAll, setShowAll] = useState(false)
 
+  const profileFilter    = useDefiStore((s) => s.profileFilter)
+  const setProfileFilter = useDefiStore((s) => s.setProfileFilter)
+
+  // When a profile filter is set (e.g. from PoolIntelligenceOverview), apply it
+  useEffect(() => {
+    if (profileFilter !== null) {
+      setRiskTab(PROFILE_TO_RISK[profileFilter])
+    }
+  }, [profileFilter])
+
+  function clearProfileFilter() {
+    setProfileFilter(null)
+    setRiskTab('all')
+  }
+
   // Classify all pools once
   const classifiedPools = useMemo(() => {
     return pools
@@ -246,7 +275,7 @@ export function YieldOpportunities() {
   const highCount = classifiedPools.filter((p) => p.riskLevel === 'high').length
 
   return (
-    <section className="px-4 sm:px-8">
+    <section id="yield-opportunities" className="px-4 sm:px-8">
       {/* Header */}
       <div className="mb-5">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -271,6 +300,27 @@ export function YieldOpportunities() {
           </select>
         </div>
 
+        {/* Profile context banner — shown when navigated from Pool Intelligence */}
+        {profileFilter !== null && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+            <svg className="h-3.5 w-3.5 shrink-0 text-white/40" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+            </svg>
+            <span className="text-xs text-white/60">
+              Showing <span className="font-semibold text-white/80">{PROFILE_LABEL[profileFilter]}</span> pools
+            </span>
+            <button
+              onClick={clearProfileFilter}
+              className="ml-auto flex items-center gap-1 rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/40 transition hover:bg-white/10 hover:text-white/70"
+            >
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+              Clear
+            </button>
+          </div>
+        )}
+
         {/* Risk tabs */}
         <div className="mt-4 flex gap-2 flex-wrap">
           {RISK_TABS.map((tab) => {
@@ -290,7 +340,11 @@ export function YieldOpportunities() {
             return (
               <button
                 key={tab.value}
-                onClick={() => setRiskTab(tab.value)}
+                onClick={() => {
+                  setRiskTab(tab.value)
+                  // If user manually changes the risk tab, clear profile context
+                  if (profileFilter !== null) setProfileFilter(null)
+                }}
                 className="flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-all"
                 style={
                   isActive

@@ -9,9 +9,14 @@ import { YieldPoolPanel } from '@/components/popup/YieldPoolPanel'
 import { YieldOpportunities } from '@/components/yields/YieldOpportunities'
 import { ProtocolRanking } from '@/components/ranking/ProtocolRanking'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { PoolIntelligenceOverview } from '@/components/yields/PoolIntelligenceOverview'
+import { ChainDominancePanel } from '@/components/analytics/ChainDominancePanel'
+import { StablecoinAnalysis } from '@/components/analytics/StablecoinAnalysis'
+import { AlertPanel } from '@/components/analytics/AlertPanel'
 import { useProtocols } from '@/hooks/useProtocols'
 import { useChains } from '@/hooks/useChains'
 import { useYields } from '@/hooks/useYields'
+import { useAnalytics } from '@/hooks/useAnalytics'
 import { formatAPY, formatTVL } from '@/lib/transforms/format'
 import { getTop10SafeByAPY } from '@/lib/transforms/normalizeProtocol'
 import type { YieldNode } from '@/types/defillama'
@@ -81,6 +86,9 @@ export default function HomePage() {
   const { pools, classifiedPools } = useYields()
   const isMobile = useIsMobile()
 
+  // Analytics — fetches /api/analytics, syncs to Zustand, refreshes every 2min
+  useAnalytics()
+
   // Global metrics
   const metrics = useMemo(() => {
     if (!protocols.length) return null
@@ -144,6 +152,16 @@ export default function HomePage() {
           />
         </section>
 
+        {/* ── Pool Intelligence ── */}
+        <ErrorBoundary>
+          <PoolIntelligenceOverview classifiedPools={classifiedPools} />
+        </ErrorBoundary>
+
+        {/* ── Active Alerts ── */}
+        <ErrorBoundary>
+          <AlertPanel />
+        </ErrorBoundary>
+
         {/* Top-10 Safe APY Cloud */}
         <section className="px-4 sm:px-8">
           <div className="mb-4 flex items-end justify-between">
@@ -183,6 +201,16 @@ export default function HomePage() {
             </div>
           )}
         </section>
+
+        {/* ── Chain Dominance ── */}
+        <ErrorBoundary>
+          <ChainDominancePanel />
+        </ErrorBoundary>
+
+        {/* ── Stablecoin Market ── */}
+        <ErrorBoundary>
+          <StablecoinAnalysis />
+        </ErrorBoundary>
 
         {/* Yield Opportunities */}
         <ErrorBoundary>
