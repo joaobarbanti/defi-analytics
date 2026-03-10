@@ -9,6 +9,10 @@ import type {
   LiquidityFlow,
   ChainDominance,
   StablecoinSummary,
+  GrowthLeaderboardEntry,
+  ChainFlowEntry,
+  CategoryRotation,
+  DexOverviewSummary,
 } from '@/types/analytics'
 import type { InvestorProfileType } from '@/types/risk'
 
@@ -67,6 +71,10 @@ interface DefiStore {
   flows: () => LiquidityFlow[]
   chainDominance: () => ChainDominance[]
   stablecoinSummary: () => StablecoinSummary | null
+  growthLeaderboard: () => GrowthLeaderboardEntry[]
+  chainFlows: () => ChainFlowEntry[]
+  categoryRotation: () => CategoryRotation[]
+  dexOverview: () => DexOverviewSummary | null
 }
 
 const defaultFilters: FilterState = {
@@ -144,4 +152,8 @@ export const useDefiStore = create<DefiStore>((set, get) => ({
   flows: () => get().analytics?.flows ?? [],
   chainDominance: () => get().analytics?.chainDominance ?? [],
   stablecoinSummary: () => get().analytics?.stablecoinSummary ?? null,
+  growthLeaderboard: () => get().analytics?.growthLeaderboard ?? [],
+  chainFlows: () => get().analytics?.chainFlows ?? [],
+  categoryRotation: () => get().analytics?.categoryRotation ?? [],
+  dexOverview: () => get().analytics?.dexOverview ?? null,
 }))

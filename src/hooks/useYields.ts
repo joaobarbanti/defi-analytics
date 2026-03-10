@@ -4,12 +4,20 @@ import type { YieldPool } from '@/types/defillama'
 import type { ClassifiedPool } from '@/types/risk'
 import { classifyPools } from '@/lib/risk/classifyPool'
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+// Call DeFiLlama directly from the browser — bypasses the 10s serverless limit
+const YIELDS_URL = 'https://yields.llama.fi/pools'
+
+async function fetchYields(url: string): Promise<YieldPool[]> {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Yields fetch failed: ${res.status}`)
+  const json = await res.json()
+  return json.data ?? []
+}
 
 export function useYields() {
   const { data, error, isLoading } = useSWR<YieldPool[]>(
-    '/api/yields',
-    fetcher,
+    YIELDS_URL,
+    fetchYields,
     { refreshInterval: 120_000, dedupingInterval: 60_000 }
   )
 

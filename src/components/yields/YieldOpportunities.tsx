@@ -169,11 +169,11 @@ function ProtocolGroup({
                         </span>
                         {(apyBase > 0 || apyReward > 0) && (
                           <span className="text-xs text-white/30">
-                            {apyBase > 0 && `${apyBase.toFixed(1)}% base`}
+                            {apyBase > 0 && `${formatAPY(apyBase)} base`}
                             {apyBase > 0 && apyReward > 0 && ' + '}
                             {apyReward > 0 && (
                               <span className="text-amber-400/60">
-                                {apyReward.toFixed(1)}% rewards
+                                {formatAPY(apyReward)} rewards
                               </span>
                             )}
                           </span>

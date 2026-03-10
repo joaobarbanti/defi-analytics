@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { useMemo, useEffect, useState } from 'react'
 import { Header } from '@/components/layout/Header'
 import { GlobalMetricsBar } from '@/components/metrics/GlobalMetricsBar'
+import { IntelligenceStrip } from '@/components/metrics/IntelligenceStrip'
 import { ProtocolPanel } from '@/components/popup/ProtocolPanel'
 import { YieldPoolPanel } from '@/components/popup/YieldPoolPanel'
 import { YieldOpportunities } from '@/components/yields/YieldOpportunities'
@@ -13,6 +14,12 @@ import { PoolIntelligenceOverview } from '@/components/yields/PoolIntelligenceOv
 import { ChainDominancePanel } from '@/components/analytics/ChainDominancePanel'
 import { StablecoinAnalysis } from '@/components/analytics/StablecoinAnalysis'
 import { AlertPanel } from '@/components/analytics/AlertPanel'
+import { InsightCards } from '@/components/analytics/InsightCards'
+import { GrowthLeaderboard } from '@/components/analytics/GrowthLeaderboard'
+import { ChainFlowLeaderboard } from '@/components/analytics/ChainFlowLeaderboard'
+import { LiquidityMigrationCard } from '@/components/analytics/LiquidityMigrationCard'
+import { CategoryRotationPanel } from '@/components/analytics/CategoryRotationPanel'
+import { InsightsTerminal } from '@/components/analytics/InsightsTerminal'
 import { useProtocols } from '@/hooks/useProtocols'
 import { useChains } from '@/hooks/useChains'
 import { useYields } from '@/hooks/useYields'
@@ -139,6 +146,11 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-950">
       <Header />
 
+      {/* Intelligence Strip — DEX volume, breadth, sentiment */}
+      <ErrorBoundary>
+        <IntelligenceStrip />
+      </ErrorBoundary>
+
       <main className="mx-auto max-w-screen-2xl space-y-10 pb-20">
         {/* Global Metrics */}
         <section className="pt-8">
@@ -152,15 +164,52 @@ export default function HomePage() {
           />
         </section>
 
+        {/* ── Active Alerts ── */}
+        <ErrorBoundary>
+          <AlertPanel />
+        </ErrorBoundary>
+
+        {/* ── Market Intelligence (InsightCards grid) ── */}
+        <ErrorBoundary>
+          <InsightCards />
+        </ErrorBoundary>
+
         {/* ── Pool Intelligence ── */}
         <ErrorBoundary>
           <PoolIntelligenceOverview classifiedPools={classifiedPools} />
         </ErrorBoundary>
 
-        {/* ── Active Alerts ── */}
+        {/* ── Growth Leaderboard (full width) ── */}
         <ErrorBoundary>
-          <AlertPanel />
+          <GrowthLeaderboard />
         </ErrorBoundary>
+
+        {/* ── Two-Column Intelligence Layout ── */}
+        <section className="px-4 sm:px-8">
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Left: Insights Terminal */}
+            <ErrorBoundary>
+              <InsightsTerminal />
+            </ErrorBoundary>
+
+            {/* Right: Chain Capital Flows */}
+            <ErrorBoundary>
+              <ChainFlowLeaderboard />
+            </ErrorBoundary>
+          </div>
+        </section>
+
+        {/* ── Liquidity Migrations + Category Rotation (two-column) ── */}
+        <section className="px-4 sm:px-8">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ErrorBoundary>
+              <LiquidityMigrationCard />
+            </ErrorBoundary>
+            <ErrorBoundary>
+              <CategoryRotationPanel />
+            </ErrorBoundary>
+          </div>
+        </section>
 
         {/* Top-10 Safe APY Cloud */}
         <section className="px-4 sm:px-8">

@@ -27,7 +27,8 @@ export async function GET() {
       growthMetrics,
       flows,
       stablecoinSummary,
-      protocolNames
+      protocolNames,
+      null
     )
 
     return NextResponse.json({ insights, generatedAt: Date.now() })

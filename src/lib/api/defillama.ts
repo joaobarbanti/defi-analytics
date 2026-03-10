@@ -23,7 +23,7 @@ async function fetchWithRetry<T>(
     try {
       const response = await fetch(url, {
         headers: { 'Content-Type': 'application/json' },
-        next: { revalidate: 60 },
+        cache: 'no-store',
       })
 
       if (!response.ok) {
@@ -42,6 +42,51 @@ async function fetchWithRetry<T>(
   }
 
   throw lastError ?? new Error(`Failed to fetch ${url}`)
+}
+
+// ─── Protocol TVL history ─────────────────────────────────────────────────────
+
+interface RawTVLEntry {
+  date: number
+  totalLiquidityUSD: number
+}
+
+interface TVLPoint {
+  date: number
+  tvl: number
+}
+
+/**
+ * Fetches the last `limit` TVL data points for a protocol directly from
+ * DeFiLlama. Used server-side to avoid self-referential HTTP calls.
+ */
+export async function fetchProtocolTVLHistory(
+  slug: string,
+  limit = 90,
+  timeoutMs = 15_000
+): Promise<TVLPoint[]> {
+  try {
+    const res = await fetch(
+      `${DEFILLAMA_BASE}/protocol/${encodeURIComponent(slug)}`,
+      { signal: AbortSignal.timeout(timeoutMs) }
+    )
+    if (!res.ok) return []
+    const data = await res.json()
+    const rawTvl: RawTVLEntry[] = Array.isArray(data?.tvl) ? data.tvl : []
+    return rawTvl
+      .filter(
+        (e) =>
+          typeof e?.date === 'number' &&
+          e.date > 0 &&
+          typeof e?.totalLiquidityUSD === 'number' &&
+          Number.isFinite(e.totalLiquidityUSD) &&
+          e.totalLiquidityUSD >= 0
+      )
+      .slice(-limit)
+      .map((e) => ({ date: e.date, tvl: e.totalLiquidityUSD }))
+  } catch {
+    return []
+  }
 }
 
 export { fetchWithRetry }

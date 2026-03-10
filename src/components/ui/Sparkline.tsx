@@ -1,6 +1,7 @@
 'use client'
 
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
+import { formatTVL } from '@/lib/transforms/format'
 
 interface SparklineProps {
   /** Array of TVL values (most recent last) */
@@ -30,7 +31,7 @@ export function Sparkline({
     <ResponsiveContainer width={width} height={height}>
       <LineChart data={chartData}>
         <Tooltip
-          formatter={(v: unknown) => [`$${(typeof v === 'number' ? v / 1e9 : 0).toFixed(2)}B`, 'TVL']}
+          formatter={(v: unknown) => [formatTVL(typeof v === 'number' ? v : 0), 'TVL']}
           contentStyle={{
             background: '#0f172a',
             border: '1px solid #334155',

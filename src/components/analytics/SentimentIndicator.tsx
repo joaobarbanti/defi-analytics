@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { useDefiStore } from '@/store/defi'
+import { formatPct } from '@/lib/transforms/format'
 import { computePoolIntelligence } from '@/lib/risk/poolIndicators'
 import { computePoolSignalDrivers } from '@/lib/risk/poolSignals'
 import type { SentimentLabel } from '@/types/analytics'
@@ -136,7 +137,7 @@ export function SentimentIndicator({ classifiedPools }: SentimentIndicatorProps)
               {label}
             </p>
             <p className="text-xs text-white/40">
-              Score: {(compositeScore * 100).toFixed(0)} / 100
+              Score: {formatPct(compositeScore * 100, { decimals: 0, signed: false })} / 100
             </p>
           </div>
 
@@ -150,7 +151,7 @@ export function SentimentIndicator({ classifiedPools }: SentimentIndicatorProps)
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-white/70">{driver.label}</span>
                   <span className="text-xs font-medium text-white/50">
-                    {(driver.score * 100).toFixed(0)}%
+                    {formatPct(driver.score * 100, { decimals: 0, signed: false })}
                   </span>
                 </div>
                 <div className="h-1 w-full rounded-full bg-white/10">

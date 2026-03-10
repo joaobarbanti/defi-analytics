@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { TrendLabelBadge } from '@/components/ui/TrendLabelBadge'
 import { assignNodeColor } from '@/lib/transforms/normalizeProtocol'
-import { formatTVL, formatAPY, formatChange } from '@/lib/transforms/format'
+import { formatTVL, formatAPY, formatChange, formatPct } from '@/lib/transforms/format'
 import InvestLink from '@/components/ui/InvestLink'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ function GrowthIntelSection({ slug, color }: GrowthIntelProps) {
 
   const est30d = metrics.tvl30dChange
   const est30dFmt = est30d != null
-    ? `${est30d >= 0 ? '+' : ''}${est30d.toFixed(1)}%`
+    ? formatPct(est30d, { decimals: 1 })
     : null
 
   const rankChip = metrics.rankChange !== 0 && (
@@ -108,7 +108,7 @@ function GrowthIntelSection({ slug, color }: GrowthIntelProps) {
             style={{ color: metrics.momentumScore >= 0 ? color : '#ef4444' }}
           >
             {metrics.momentumScore > 0 ? '+' : ''}
-            {metrics.momentumScore.toFixed(0)}
+            {Math.round(metrics.momentumScore)}
           </span>
         </div>
       </div>
@@ -197,7 +197,7 @@ function ChainDonutChart({ chainTvls }: ChainDonutProps) {
   const pieData = entries.map(([name, value]) => ({
     name,
     value,
-    share: ((value / total) * 100).toFixed(1),
+    share: (value / total) * 100,
   }))
 
   return (
@@ -247,8 +247,8 @@ function ChainDonutChart({ chainTvls }: ChainDonutProps) {
                 </span>
               </div>
               <span className="text-xs font-medium text-white/80">
-                {d.share}%
-              </span>
+                  {formatPct(d.share, { decimals: 1, signed: false })}
+                </span>
             </div>
           ))}
           {pieData.length > 5 && (

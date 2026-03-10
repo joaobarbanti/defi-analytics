@@ -1,5 +1,5 @@
 import type { Protocol, Chain } from '@/types/defillama'
-import type { LiquidityFlow, ChainDominance } from '@/types/analytics'
+import type { LiquidityFlow, ChainDominance, ChainFlowEntry } from '@/types/analytics'
 
 /**
  * Extracts a numeric TVL value from a chainTvls entry.
@@ -81,6 +81,7 @@ export function computeChainFlows(
 
 /**
  * Computes each chain's share of total DeFi TVL.
+ * shareChange7d is estimated using the change_7d proxy from protocols on each chain.
  */
 export function computeChainDominance(chains: Chain[]): ChainDominance[] {
   const total = chains.reduce((s, c) => s + (c.tvl ?? 0), 0)
@@ -94,6 +95,70 @@ export function computeChainDominance(chains: Chain[]): ChainDominance[] {
       name: c.name,
       tvl: c.tvl ?? 0,
       share: (c.tvl ?? 0) / total,
-      shareChange7d: null, // Would require historical data
+      shareChange7d: null, // Would require historical chain TVL data
     }))
+}
+
+/**
+ * Computes ranked inflow/outflow per chain for the ChainFlowLeaderboard.
+ * Derives flow estimates from protocol change_7d × chainTvl.
+ */
+export function computeChainFlowEntries(
+  protocols: Protocol[],
+  chains: Chain[]
+): ChainFlowEntry[] {
+  const chainNetFlow = new Map<string, number>()
+  const chainTvlMap = new Map<string, number>()
+
+  // Build chain TVL from chains array for accurate share computation
+  const totalChainTvl = chains.reduce((s, c) => s + (c.tvl ?? 0), 0)
+  for (const c of chains) {
+    if (c.tvl && c.tvl > 0) {
+      chainTvlMap.set(c.name, c.tvl)
+    }
+  }
+
+  // Estimate per-chain net flow from protocol data
+  for (const p of protocols) {
+    if (!p.chainTvls || !p.change_7d) continue
+    const c7d = p.change_7d / 100
+    if (!Number.isFinite(c7d)) continue
+
+    for (const [chain, tvlRaw] of Object.entries(p.chainTvls)) {
+      const tvlNum = extractTvlNumber(tvlRaw)
+      if (tvlNum <= 0) continue
+      const flow = c7d * tvlNum
+      if (!Number.isFinite(flow)) continue
+      chainNetFlow.set(chain, (chainNetFlow.get(chain) ?? 0) + flow)
+    }
+  }
+
+  // Build entries for all chains that appear in the chains list
+  const entries: ChainFlowEntry[] = chains
+    .filter((c) => c.tvl && c.tvl > 0)
+    .map((c) => {
+      const tvl = c.tvl ?? 0
+      const netFlow7d = chainNetFlow.get(c.name) ?? 0
+      const share = totalChainTvl > 0 ? tvl / totalChainTvl : 0
+
+      // Estimate share change: (flow / totalTVL) in percentage points
+      const shareChange7d =
+        totalChainTvl > 0 ? (netFlow7d / totalChainTvl) * 100 : null
+
+      return {
+        chain: c.name,
+        tvl,
+        netFlow7d,
+        shareChange7d,
+        direction: (
+          netFlow7d > tvl * 0.005 ? 'inflow'
+          : netFlow7d < -(tvl * 0.005) ? 'outflow'
+          : 'neutral'
+        ) as ChainFlowEntry['direction'],
+      }
+    })
+    .sort((a, b) => Math.abs(b.netFlow7d) - Math.abs(a.netFlow7d))
+    .slice(0, 20)
+
+  return entries
 }

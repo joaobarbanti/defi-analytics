@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { useDefiStore } from '@/store/defi'
-import { formatTVL } from '@/lib/transforms/format'
+import { formatTVL, formatPct } from '@/lib/transforms/format'
 import type { StablecoinAssetMetrics } from '@/types/analytics'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -66,6 +66,7 @@ function PegHealthBar({ price }: { price: number | null }) {
           style={{ width: `${fillPct}%`, background: barColor }}
         />
       </div>
+      {/* 4 decimals intentional — stablecoin price precision matters */}
       <span
         className={`text-[10px] font-medium tabular-nums ${
           isDepegged ? 'text-amber-400' : 'text-emerald-400'
@@ -86,17 +87,16 @@ function DepegAlert({ assets }: { assets: StablecoinAssetMetrics[] }) {
 
   return (
     <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-      <span className="mt-0.5 text-amber-400 text-sm flex-shrink-0">⚠</span>
+      <span className="mt-0.5 text-amber-400 text-sm flex-shrink-0">&#9888;</span>
       <div className="text-xs text-amber-200/80 leading-relaxed">
         <span className="font-semibold text-amber-300">Depeg Alert · </span>
         {depegged.map((a) => {
-          const dev = ((a.price! - 1) * 100).toFixed(2)
-          const sign = a.price! >= 1 ? '+' : ''
+          const devPct = (a.price! - 1) * 100
           return (
             <span key={a.symbol}>
               <span className="font-medium">{a.symbol}</span>{' '}
               <span className="text-amber-400/80">
-                ({sign}{dev}%)
+                ({formatPct(devPct, { decimals: 2 })})
               </span>{' '}
             </span>
           )
@@ -138,7 +138,7 @@ function MechDistPills({ dist }: { dist: MechDist }) {
           key={p.label}
           className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-semibold leading-none ${p.color}`}
         >
-          {p.label} {(p.pct * 100).toFixed(0)}%
+          {p.label} {formatPct(p.pct * 100, { signed: false, decimals: 0 })}
         </span>
       ))}
     </div>
@@ -264,11 +264,6 @@ export function StablecoinAnalysis() {
 
   if (!summary) return null
 
-  const weeklyChangeFmt =
-    summary.weeklyChange != null
-      ? `${summary.weeklyChange >= 0 ? '+' : ''}${summary.weeklyChange.toFixed(2)}%`
-      : null
-
   const chainData = summary.chainDistribution
     .filter((c) => c.totalUSD > 0)
     .slice(0, 8)
@@ -301,15 +296,15 @@ export function StablecoinAnalysis() {
               <p className="mt-0.5 text-2xl font-black text-white">
                 {formatTVL(summary.totalMarketCap)}
               </p>
-              {weeklyChangeFmt && (
+              {summary.weeklyChange != null && (
                 <span
                   className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold ${
-                    summary.weeklyChange! >= 0
+                    summary.weeklyChange >= 0
                       ? 'bg-emerald-500/15 text-emerald-300'
                       : 'bg-red-500/15 text-red-400'
                   }`}
                 >
-                  {weeklyChangeFmt} 7d
+                  {formatPct(summary.weeklyChange, { decimals: 1 })} 7d
                 </span>
               )}
             </div>
@@ -342,7 +337,7 @@ export function StablecoinAnalysis() {
                       {formatTVL(asset.circulatingUSD)}
                     </span>
                     <span className="text-xs font-medium text-white/60 w-10 text-right">
-                      {(asset.dominance * 100).toFixed(1)}%
+                      {formatPct(asset.dominance * 100, { signed: false, decimals: 1 })}
                     </span>
                   </div>
                 </div>
@@ -390,7 +385,7 @@ export function StablecoinAnalysis() {
                   {dominantChain.chain}
                 </p>
                 <p className="text-[11px] text-white/40 mt-0.5">
-                  {(dominantChain.share * 100).toFixed(1)}% · {formatTVL(dominantChain.totalUSD)}
+                  {formatPct(dominantChain.share * 100, { signed: false, decimals: 1 })} · {formatTVL(dominantChain.totalUSD)}
                 </p>
               </div>
             )}
@@ -442,7 +437,7 @@ export function StablecoinAnalysis() {
                     </span>
                   </div>
                   <span className="text-xs font-medium text-white/70">
-                    {(c.share * 100).toFixed(1)}%
+                    {formatPct(c.share * 100, { signed: false, decimals: 1 })}
                   </span>
                 </div>
               ))}

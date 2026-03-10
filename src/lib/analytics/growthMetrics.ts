@@ -1,5 +1,5 @@
 import type { Protocol } from '@/types/defillama'
-import type { ProtocolGrowthMetrics, TrendLabel } from '@/types/analytics'
+import type { ProtocolGrowthMetrics, TrendLabel, TVLPoint } from '@/types/analytics'
 
 // ── In-memory rank snapshot (lives for the process lifetime) ─────────────────
 // Key: slug → previous rank index (0-based, lower = higher ranked)
@@ -20,13 +20,69 @@ function classifyTrend(change7d: number | null): TrendLabel {
 }
 
 /**
+ * Computes the real 30-day TVL change % from a sorted history array.
+ * Returns null if there are fewer than 2 data points or data is insufficient.
+ */
+function compute30dChangeFromHistory(points: TVLPoint[]): number | null {
+  if (points.length < 2) return null
+
+  const latest = points[points.length - 1]
+  const nowMs = latest.date * 1000
+  const cutoff = nowMs - 30 * 24 * 3600 * 1000
+
+  // Find the point closest to 30 days ago
+  let oldest = points[0]
+  for (const p of points) {
+    if (p.date * 1000 >= cutoff) {
+      oldest = p
+      break
+    }
+  }
+
+  if (oldest.tvl <= 0 || latest.tvl <= 0) return null
+  if (oldest === latest) return null
+
+  const change = ((latest.tvl - oldest.tvl) / oldest.tvl) * 100
+  return Number.isFinite(change) ? change : null
+}
+
+/**
+ * Computes the real 7-day TVL change % from a sorted history array.
+ */
+function compute7dChangeFromHistory(points: TVLPoint[]): number | null {
+  if (points.length < 2) return null
+
+  const latest = points[points.length - 1]
+  const nowMs = latest.date * 1000
+  const cutoff = nowMs - 7 * 24 * 3600 * 1000
+
+  let oldest = points[0]
+  for (const p of points) {
+    if (p.date * 1000 >= cutoff) {
+      oldest = p
+      break
+    }
+  }
+
+  if (oldest.tvl <= 0 || latest.tvl <= 0) return null
+  if (oldest === latest) return null
+
+  const change = ((latest.tvl - oldest.tvl) / oldest.tvl) * 100
+  return Number.isFinite(change) ? change : null
+}
+
+/**
  * Computes growth metrics for each protocol.
  * - momentumScore: weighted combination of 7d and 1d change
- * - tvl30dChange: estimated as change_7d * 4 (transparently approximated)
+ * - tvl30dChange: real from history if provided, otherwise estimated as change_7d * 4
  * - rankChange: compares current rank vs snapshot stored at module level
+ *
+ * @param protocols - full protocol list
+ * @param protocolHistories - optional map of slug → TVL history points for real 30d computation
  */
 export function computeGrowthMetrics(
-  protocols: Protocol[]
+  protocols: Protocol[],
+  protocolHistories?: Map<string, TVLPoint[]>
 ): Record<string, ProtocolGrowthMetrics> {
   const today = getTodayKey()
   const sorted = [...protocols]
@@ -45,7 +101,14 @@ export function computeGrowthMetrics(
   const result: Record<string, ProtocolGrowthMetrics> = {}
 
   for (const p of protocols) {
-    const c7d = p.change_7d ?? null
+    const history = protocolHistories?.get(p.slug)
+    const hasRealHistory = !!(history && history.length >= 7)
+
+    // Use real history when available, fall back to DeFiLlama API field
+    const c7d = hasRealHistory
+      ? (compute7dChangeFromHistory(history!) ?? p.change_7d ?? null)
+      : (p.change_7d ?? null)
+
     const c1d = p.change_1d ?? null
 
     const momentumScore =
@@ -55,7 +118,10 @@ export function computeGrowthMetrics(
         ? Math.max(-100, Math.min(200, c7d))
         : 0
 
-    const tvl30dChange = c7d !== null ? c7d * 4 : null
+    // Real 30d change if history available, otherwise estimate
+    const tvl30dChange = hasRealHistory
+      ? (compute30dChangeFromHistory(history!) ?? (c7d !== null ? c7d * 4 : null))
+      : (c7d !== null ? c7d * 4 : null)
 
     const currentRank = currentRanks.get(p.slug) ?? null
     const prevRank = previousRanks.get(p.slug) ?? null
@@ -72,6 +138,7 @@ export function computeGrowthMetrics(
       momentumScore,
       rankChange,
       trendLabel: classifyTrend(c7d),
+      hasRealHistory,
     }
   }
 

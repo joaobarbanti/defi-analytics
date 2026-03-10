@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { computePoolIntelligence } from '@/lib/risk/poolIndicators'
 import type { ClassifiedPool, InvestorProfileType, PoolIndicator } from '@/types/risk'
-import { formatTVL, formatAPY } from '@/lib/transforms/format'
+import { formatTVL, formatAPY, formatPct } from '@/lib/transforms/format'
 import { useDefiStore } from '@/store/defi'
 
 // ─── Flag explanation copy ────────────────────────────────────────────────────
@@ -306,13 +306,13 @@ export function PoolIntelligenceOverview({ classifiedPools }: Props) {
           {/* Universe composition pills */}
           <div className="hidden sm:flex items-center gap-2 shrink-0">
             <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] text-emerald-400">
-              {(report.pctSafe * 100).toFixed(0)}% safe
+              {formatPct(report.pctSafe * 100, { signed: false, decimals: 0 })} safe
             </span>
             <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-0.5 text-[11px] text-red-400">
-              {(report.pctSuspicious * 100).toFixed(0)}% suspicious
+              {formatPct(report.pctSuspicious * 100, { signed: false, decimals: 0 })} suspicious
             </span>
             <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-0.5 text-[11px] text-indigo-400">
-              {(report.pctLst * 100).toFixed(0)}% LST
+              {formatPct(report.pctLst * 100, { signed: false, decimals: 0 })} LST
             </span>
           </div>
         </div>

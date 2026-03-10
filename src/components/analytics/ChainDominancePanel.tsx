@@ -1,7 +1,7 @@
 'use client'
 
 import { useDefiStore } from '@/store/defi'
-import { formatTVL } from '@/lib/transforms/format'
+import { formatTVL, formatPct } from '@/lib/transforms/format'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -25,7 +25,6 @@ export function ChainDominancePanel() {
 
       <div className="rounded-2xl border border-white/10 bg-white/[0.02] divide-y divide-white/5">
         {top10.map((chain, i) => {
-          const sharePct = (chain.share * 100).toFixed(1)
           // Bar width relative to #1 chain (not 100%) so the leader fills the bar
           const barPct = (chain.share / maxShare) * 100
 
@@ -74,7 +73,7 @@ export function ChainDominancePanel() {
 
               {/* Share % */}
               <span className="w-12 flex-shrink-0 text-right text-sm font-semibold text-white/60">
-                {sharePct}%
+                {formatPct(chain.share * 100, { signed: false, decimals: 1 })}
               </span>
             </div>
           )

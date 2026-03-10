@@ -9,13 +9,34 @@ export type TrendLabel =
   | 'Declining'
   | 'Collapsing'
 
+export interface TVLPoint {
+  date: number   // unix timestamp (seconds)
+  tvl: number    // USD value
+}
+
 export interface ProtocolGrowthMetrics {
   slug: string
   tvl7dChange: number | null   // % change over 7 days
-  tvl30dChange: number | null  // estimated % change over 30 days
+  tvl30dChange: number | null  // % change over 30 days (real if history available, estimated otherwise)
   momentumScore: number        // weighted score -100..+200
   rankChange: number           // positive = moved up
   trendLabel: TrendLabel
+  /** true when tvl30dChange came from real historical data, false when estimated via change_7d × 4 */
+  hasRealHistory: boolean
+}
+
+/** A single entry in the growth leaderboard */
+export interface GrowthLeaderboardEntry {
+  slug: string
+  name: string
+  logo: string | null
+  category: string
+  tvl: number
+  change7d: number | null
+  change30d: number | null
+  hasRealHistory: boolean
+  /** Last 30 TVL data points for sparkline rendering */
+  sparklinePoints: TVLPoint[]
 }
 
 export interface ChainDominance {
@@ -111,15 +132,46 @@ export interface MarketSentiment {
   drivers: SentimentDriver[]
 }
 
+export interface CategoryRotation {
+  category: string
+  tvl: number
+  share: number          // 0..1 fraction of total protocol TVL
+  shareDelta7d: number   // percentage point change estimate
+  trend: 'gaining' | 'losing' | 'stable'
+}
+
+export interface ChainFlowEntry {
+  chain: string
+  tvl: number
+  netFlow7d: number    // estimated USD net flow over 7d (positive = inflow)
+  shareChange7d: number | null  // pp change in total TVL share
+  direction: 'inflow' | 'outflow' | 'neutral'
+}
+
+export interface DexOverviewSummary {
+  total24h: number
+  total7d: number
+  /** Latest 30 days of global DEX volume, for sparkline */
+  recentVolumeChart: TVLPoint[]
+}
+
 export interface AnalyticsPayload {
   growthMetrics: Record<string, ProtocolGrowthMetrics>
+  /** Top 15 fastest-growing protocols with sparklines */
+  growthLeaderboard: GrowthLeaderboardEntry[]
   flows: LiquidityFlow[]
   chainDominance: ChainDominance[]
+  /** Ranked chain inflow/outflow entries */
+  chainFlows: ChainFlowEntry[]
+  /** TVL share by protocol category */
+  categoryRotation: CategoryRotation[]
   // Nullable — computation may fail gracefully; components must guard against null
   stablecoinSummary: StablecoinSummary | null
   alerts: MarketAlert[]
   insights: InsightCard[]
   // Nullable — computation may fail gracefully; components must guard against null
   sentiment: MarketSentiment | null
+  /** Nullable — DEX volume data; null if fetch fails */
+  dexOverview: DexOverviewSummary | null
   generatedAt: number
 }
